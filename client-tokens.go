@@ -21,12 +21,12 @@ type Token struct {
 }
 
 // Initalize and connect to the database with the given path
-func initDB(dbPath string) (*sql.DB, error) {
+func initDB(dbPath string) *sql.DB {
 	// Attempt to open the database
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Fatal("Error opening database: ", err.Error())
-		return nil, err
+		return nil
 	}
 	log.Print("Successfully connected to database")
 
@@ -49,7 +49,7 @@ func initDB(dbPath string) (*sql.DB, error) {
 		log.Fatal("Error pinging database: ", err.Error())
 	}
 
-	return db, nil
+	return db
 }
 
 // Generate a new client token

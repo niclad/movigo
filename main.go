@@ -92,19 +92,15 @@ type MediaRequest struct {
 	ContentType ContentType
 }
 
-func NewMediaRequest(id int, contentType ContentType) *MediaRequest {
-	// Can't have negative IDs
-	if id <= 0 {
-		return nil
-	}
-
-	return &MediaRequest{
+func NewMediaRequest(id int, contentType ContentType) MediaRequest {
+	return MediaRequest{
 		ID:          id,
 		ContentType: contentType,
 	}
 }
 
-func getContentByType(c *gin.Context) {
+func getContentDetails(c *gin.Context) {
+	// Validate the given URI parameters
 	contentType, err := ParseContentType(c.Param("contentType"))
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
@@ -117,9 +113,21 @@ func getContentByType(c *gin.Context) {
 		return
 	}
 
-	fmt.Println(contentType, id)
+	// Create a new MediaRequest
+	mediaReq := NewMediaRequest(id, contentType)
 
-	c.IndentedJSON(http.StatusOK, MediaRequest{ID: id, ContentType: contentType})
+	if contentType == TVShow {
+		var payload TVDetails
+		result, err := getTMDB(&mediaReq, &payload)
+		if err != nil {
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, result.(*TVDetails))
+	} else {
+		c.IndentedJSON(http.StatusNotImplemented, gin.H{"message": "not implemented"})
+	}
 }
 
 var logger *os.File
@@ -134,15 +142,12 @@ func main() {
 		log.Fatal("TMDB_API_V3_KEY is unavailable in the current environment")
 	}
 
-	db, err = initDB("./client-access.db") // Initialize the database connection
-	defer db.Close()                       // Close the database connection
-	defer logger.Close()                   // Close the log file
-
-	testToken := GenerateToken()
-	err = testToken.Write(db)
+	db = initDB("./client-access.db") // Initialize the database connection
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer db.Close()     // Close the database connection
+	defer logger.Close() // Close the log file
 
 	router := gin.Default()
 	router.GET("/:contentType/:id", getContentByType)
@@ -167,12 +172,12 @@ func initLogger(logName string) *os.File {
 	return f
 }
 
-func getTMDB(mediaReq *MediaRequest) {
+func getTMDB(mediaReq *MediaRequest, payload interface{}) (interface{}, error) {
 
 	reqURL, err := url.Parse(baseURL)
 	if err != nil {
-		fmt.Println("Malformed URL: ", err.Error())
-		return
+		log.Print("Malformed URL: ", err.Error())
+		return payload, err
 	}
 
 	reqURL.Path += mediaReq.ContentType.String() + "/" + strconv.Itoa(mediaReq.ID)
@@ -186,18 +191,17 @@ func getTMDB(mediaReq *MediaRequest) {
 
 	res, err := http.DefaultClient.Get(reqURL.String())
 	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		return
+		log.Print("Error: ", err.Error())
+		return payload, err
 	}
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		return
+		log.Print("Error: ", err.Error())
+		return payload, err
 	}
 
-	var payload TV
 	json.Unmarshal(body, &payload)
 
-	fmt.Println(payload.Name, payload.ProductionCompanies[0].Name)
+	return payload, nil
 }
