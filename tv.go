@@ -1,6 +1,6 @@
 package main
 
-type TV struct {
+type TVDetails struct {
 	BackdropPath string `json:"backdrop_path"` // Possibly null!
 	CreatedBy    []struct {
 		ID          int    `json:"id"`
@@ -77,4 +77,8 @@ type TV struct {
 	Type        string
 	VoteAverage float32 `json:"vote_average"`
 	VoteCount   int     `json:"vote_count"`
+}
+
+func getTvDetails() {
+
 }

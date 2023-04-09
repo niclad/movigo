@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -145,7 +146,14 @@ func main() {
 	}
 
 	router := gin.Default()
-	router.GET("/:contentType/:id", getContentByType)
+
+	// Set up CORS middleware
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"http://127.0.0.1:3000"}
+	router.Use(cors.New(config))
+	// router.Use(cors.Default())
+
+	router.GET("/:contentType/:id", getContentDetails)
 	// router.GET("/albums/:id", getAlbumByID)
 	// router.POST("/albums", postAlbums)
 
